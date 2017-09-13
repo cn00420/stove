@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta http-equiv="CONTENT-TYPE" content="text/html" charset="UTF-8">
+    <title>Stove:探索内心的世界</title>
+    <link href="/resource/css/bootstrap.css" rel="stylesheet">
+    <link href="/resource/css/stove.site.css" rel="stylesheet">
+
+    <script type="text/javascript" src="/js/jquery2_1_4.js"></script>
+    <script type="text/javascript" src="/js/StoveUtil.js"></script>
+    <script type="text/javascript" src="/js/stove_comm.js"></script>
+    <script>
+        var minlen = 3;
+
+        $(function(){
+            init_search_key();
+            $('#search_tf').keyup(function(event){
+                launch_search(event);
+            });
+        });
+
+        function init_search_key(){
+            var key = stove_get_value_from_url(window.location.href, 'key');
+            key = decodeURI(key);
+            if (key.length >= minlen )
+               search(key);
+
+            $('#search_tf')[0].focus();
+            $('#search_tf').val(key);
+        }
+
+        function search(key){
+            $.ajax({
+                url: "/php/action/stove_search.php?what=j&q=" + key,
+                data: {
+                },
+                type:'GET',
+                dataType: 'json',
+                success: function(data){
+                    show_result(data);
+                },
+                error: function(xhr, statusCode, statusMsg){
+                    stove_alert("查询错误:" + statusCode + "-" + statusMsg);
+                }
+            });
+        }
+
+        function launch_search(event){
+            if (!stove_is_text_char(event) && event.which != 13)  // 如果是换行以外的其他控制字符，直接返回
+                return;
+            if (event.which != 13)
+               var key = $('#search_tf')[0].value;
+            if(key.length >= minlen)
+                search(key);
+        }
+
+        function show_result(data){
+            var results = data.response.docs;
+
+            $('#journals_div').html("");
+            for(var i = 0; i < results.length; i++){
+                var elem = '<p>' + results[i].journal_name_t +  '</p>';
+                $(elem).appendTo('#journals_div');
+
+            }
+        }
+    </script>
+</head>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-lg-12">
+            <input id="search_tf" type="text" placeholder="探索Stove"
+                   style="width: 100%; margin-top: 50px; border-left: medium none; border-right: medium none; border-top: medium none; line-height: 1.8; font-size: 24px;"/>
+        </div>
+    </div>
+
+    <div class="row" style="margin-top: 20px">
+        <div class="col-lg-2">
+            <div class="navbar navbar-inverse navbar-middle" style="margin-top: 0px">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav">
+                        <li style="width: 100%">
+                            <a href="javascript:void(0);" id="journal_link">刊物</a>
+                        </li>
+                        <li style="width: 100%">
+                            <a href="javascript:void(0);" id="topic_link">话题</a>
+                        </li>
+                        <li style="width: 100%">
+                            <a href="javascript:void(0);" id="paper_link">文章</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-10">
+            <div id="journals_div" class="row journal-row">
+            </div>
+
+            <div id="topics_div" class="row">
+
+            </div>
+
+            <div id="papers_div" class="row">
+
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

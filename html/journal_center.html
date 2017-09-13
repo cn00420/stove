@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="CONTENT-TYPE" content="text/html" charset="UTF-8">
+
+    <title>刊物中心</title>
+
+    <link href="/resource/css/bootstrap.css" rel="stylesheet">
+    <link href="/resource/css/jquery-ui.css" rel="stylesheet">
+    <link href="/resource/css/stove.site.css" rel="stylesheet">
+
+    <script type="text/javascript" src="/js/jquery2_1_4.js"></script>
+    <script type="text/javascript" src="/js/StoveUtil.js"></script>
+    <script type="text/javascript" src="/js/stove_comm.js"></script>
+
+    <script type="text/javascript">
+        var stove_journal_paper_tail = false;
+        var stove_journal_page_size = 8;
+        var stove_journal_paper_page_index = 1;
+
+        $(function () {
+            var isMyJournal = $('#is_my_journal')[0].value;
+            if (isMyJournal == 'true') {
+                $('#btn_subscribe').hide();
+                $('#btn_edit').show();
+            }
+            else {
+                $('#btn_subscribe').show();
+                $('#btn_edit').hide();
+            }
+
+            stove_journal_load_papers(1);
+        });
+
+        function stove_journal_load_papers() {
+            var page_index = arguments[0];
+            var journal_id = $('#journal_id')[0].value;
+
+            $.ajax({
+                url: "/php/action/paper_mgr.php",
+                data: {
+                    order_by: "1",
+                    page_index: page_index,
+                    page_size: stove_journal_page_size,
+                    action: "get-journal-papers",
+                    journal_id: journal_id
+                },
+                type: 'POST',
+                dataType: 'json',
+                success: stove_journal_create_paper_section,
+                error: function (xhr, statusCode, statusMsg) {
+                    stove_alert("读取文章错误:" + statusCode + "-" + statusMsg);
+                }
+            });
+        }
+
+        function stove_journal_create_paper_section(papers) {
+            var parent = $("#papers");
+            stove_create_paper_section(papers, parent);
+
+            if (papers.length < stove_journal_page_size)
+                stove_journal_paper_tail = true;
+        }
+
+        function stove_journal_load_more_paper(){
+            if (stove_journal_paper_tail == false) {
+                stove_journal_paper_page_index++;
+                stove_journal_load_papers(stove_journal_paper_page_index);
+            }
+            else{
+                stove_alert("已经加载完所有的文章");
+                return;
+            }
+
+        }
+
+        function stove_journal_jump_to_edit(){
+            window.location = "/html/journal_mgr.html?from=/php/action/journal_center.php:journal_id="
+                    + $('#journal_id')[0].value
+                    + "&journal_id=" + $('#journal_id')[0].value;
+
+        }
+    </script>
+</head>
+<body>
+<div class="container" style="width: 1300px">
+    <div class="row">
+        <div class="col-lg-3">
+            <div style="position: fixed; height: 650px; width: 300px">
+                <div class="row">
+                    <div class="journal journal-row thumbnail"
+                         style="background-image: url('{#$image_url#}');width: 80%">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="journal-name">{#$journal_name#}</div>
+                    <div style="text-align: center; margin-top:10px; margin-bottom: 10px">
+                        <img src="{#$figure_url#}" class="author-figure">
+                        <span>{#$author_alias#}</span>
+                    </div>
+                    <div style="margin-top:10px; margin-bottom: 10px; text-align: center">{#$journal_desc#}</div>
+                </div>
+                <div class="row">
+                    <div style="margin-top:10px; margin-bottom: 10px; text-align: center">
+                        <ul class="nav navbar user-stats">
+                            <li>
+                                <b>{#$paper_qty#}</b>
+                                <span>文章</span>
+                            </li>
+                            <li>
+                                <b>{#$topic_qty#}</b>
+                                <span>话题</span>
+                            </li>
+                            <li>
+                                <b>{#$subscribe_qty#}</b>
+                                <span>订阅量</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                </div>
+                <div class="row">
+                    <div style="margin-top:10px; margin-bottom: 10px; text-align: center">
+                        <div style="position: absolute; bottom: 10px; width: 100%">
+                            <a class="button-anchor" href="javascript:void(0);" id="btn_subscribe">订阅</a>
+                            <a class="button-anchor" href="javascript:stove_journal_jump_to_edit();" id="btn_edit">编辑</a>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-9">
+            <div class="row">
+                <div class="navbar pure-navbar">
+                    <ul class="navbar-nav nav">
+                        <li>
+                            <a href="javascript:void(0);">话题</a>
+                        </li>
+                        <li>
+                            <a href="javascript:void(0);">文章</a>
+                        </li>
+                    </ul>
+
+                    <ul class="navbar-nav nav navbar-right">
+                        <li>
+                            <a href="javascript:void(0);">最新</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="row">
+                <div id="topics">
+
+                </div>
+                <div id="papers" style="display: block">
+
+                </div>
+            </div>
+
+            <div id="div_load_more" class="load-more">
+                <a href="javascript:stove_journal_load_more_paper()">加载更多</a>
+            </div>
+        </div>
+
+    </div>
+</div>
+<div style="display: none">
+    <input type="hidden" id="is_my_journal" value="{#$is_my_journal#}">
+    <input type="hidden" id="has_subscribed" value="{#$has_subscribed#}">
+    <input type="hidden" id="journal_id" value="{#$journal_id#}">
+</div>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="CONTENT-TYPE" content="text/html" charset="UTF-8">
+    <title>写文章</title>
+    <link href="/resource/css/bootstrap.css" rel="stylesheet">
+    <link href="/resource/css/jquery-ui.css" rel="stylesheet">
+    <link href="/resource/css/stove.site.css" rel="stylesheet">
+
+    <style type="text/css">
+        #publish_div p {
+            margin:0px 0px;
+            width: 100%;
+            height:24px;
+            line-height:24px;
+            background:lightblue;
+        }
+
+        #publish_div p.close-form{
+            text-align: right;
+        }
+
+    </style>
+
+    <script type="text/javascript" src="/js/jquery2_1_4.js"></script>
+    <script type="text/javascript" src="/js/jquery-ui.js"></script>
+    <script type="text/javascript" src="/js/StoveUtil.js"></script>
+    <script type="text/javascript" charset="utf-8" src="/ueditor/ueditor.config.js"></script>
+    <script type="text/javascript" charset="utf-8" src="/ueditor/ueditor.all.js"></script>
+    <script type="text/javascript" charset="utf-8" src="/ueditor/lang/zh-cn/zh-cn.js"></script>
+
+    <script type="text/javascript">
+        var draftId = -1;
+        var draft_content = 0;
+        var contentChanged = false;
+        var interval = -1;
+        var uid = null;
+        var saving = false;
+        var ue = null;
+
+        var pub_journal_id = -1;
+        var pub_topic_id = -1;
+
+        $(function(){
+          draftId = $('#paper_id')[0].value;
+
+          draft_content = $('#content_length')[0].value;
+
+          var editorOption = new Object();
+          if (draft_content > 0){
+             editorOption.autoClearinitialContent = false;
+             editorOption.initialContent = "";
+             ue = UE.getEditor('div_paper_content', editorOption);
+          }
+          else{
+             editorOption.autoClearinitialContent = true;
+             editorOption.initialContent = "开始书写...";
+             ue = UE.getEditor('div_paper_content', editorOption);
+          }
+
+          $('textarea').bind('input propertychange', stove_contentChanged);
+          $('#btn_pub_ok').on('click', stove_publish);
+
+          // 刊物自动匹配
+          stove_match_journal();
+          // 话题自动匹配
+          stove_match_topic();
+
+          ue.ready(function(){
+              window.clearInterval(interval);
+              interval = window.setInterval(stove_save, 5000);   // 5s保存一次
+              ue.addListener("contentChange", stove_contentChanged);
+              ue.setContent($('#inner_content')[0].value);
+              contentChanged = false;
+          });
+        });
+
+        function stove_contentChanged() {
+            contentChanged = true;
+        }
+
+        // 保存稿件
+        function stove_save() {
+            if (ue.hasContents() && (contentChanged == true) && (saving == false)) {
+                saving = true;
+                var title = $("#paper_title")[0].value;
+                var summary = $("#paper_summary")[0].value;
+                var content = ue.getContent();
+                var words = ue.getContentLength(true);
+
+                var rootNode = UE.htmlparser(content, true);
+                var images = rootNode.getNodesByTagName('img').length;
+
+                $.ajax({
+                    url: "/php/action/paper_mgr.php",
+                    data: {
+                        paper_id: draftId,
+                        paper_title: title,
+                        paper_summary: summary,
+                        paper_keyword: "",
+                        content: content,
+                        words: words,
+                        images: images,
+                        action: "save"
+                    },
+                    type: 'POST',
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.status == 0) {
+                            draftId = data.bo.PAPER_ID;
+                            contentChanged = false;
+                            saving = false;
+                            ue.trigger('hidemessage', uid);
+                            uid = ue.trigger('showmessage', {
+                                content: ue.getLang('autosave.success'),
+                                timeout: 1000
+                            });
+                        }
+                        else {
+                            stove_alert(data.description);
+                        }
+                    },
+                    error: function (xhr, statusCode, statusMsg) {
+                        stove_alert("保存文章时产生错误:" + statusCode + "-" + statusMsg);
+                    }
+                });
+            }
+        }
+
+        // 发表稿件
+        function stove_publish(){
+            if (pub_topic_id == -1){
+                stove_alert("请选择话题");
+                return;
+            }
+
+            if (draftId == -1){
+                stove_alert("请选择合适的稿件");
+                return;
+            }
+
+            $.ajax({
+                url: "/php/action/paper_mgr.php",
+                data: {
+                    draft_id: draftId,
+                    topic_id: pub_topic_id,
+                    action: "publish"
+                },
+                type: 'POST',
+                dataType: 'json',
+                success: function (data) {
+                    stove_alert("发表成功");
+                },
+                error: function (xhr, statusCode, statusMsg) {
+                    stove_alert("发表文章时产生错误:" + statusCode + "-" + statusMsg);
+                }
+            });
+        }
+
+        // 刊物自动匹配
+        function stove_match_journal(){
+            var journalCompleteOption = new Object();
+            journalCompleteOption.source=function(request, callback){
+                var key = request.term;
+                pub_journal_id = -1;
+                if (key.length == 0)
+                    return;
+
+                var journals = [];
+                $.ajax({
+                    url: "/php/action/journal_mgr.php",
+                    data: {
+                        name: key,
+                        action: "match-journals"
+                    },
+                    type:'POST',
+                    dataType: 'json',
+                    success: function(data){
+                        for(var i = 0; i < data.length; i++){
+                            var journal = new Object();
+                            journal.value = data[i].JOURNAL_NAME;
+                            journal.label = data[i].JOURNAL_NAME;
+                            journal.id = data[i].JOURNAL_ID;
+                            journals.push(journal);
+                        }
+                        callback(journals);
+
+                    },
+                    error: function(xhr, statusCode, statusMsg){
+                        stove_alert("匹配刊物错误:" + statusCode + "-" + statusMsg);
+                    }
+                });
+            };
+
+            journalCompleteOption.select = function(event, ui){
+                pub_journal_id = ui.item.id;
+            }
+
+            journalCompleteOption.delay=1000;
+            $('#text_journal').autocomplete(journalCompleteOption);
+        }
+
+        // 话题自动匹配
+        function stove_match_topic(){
+            var topicCompleteOption = new Object();
+            topicCompleteOption.source=function(request, callback){
+                pub_topic_id = -1;
+                if (pub_journal_id == -1){
+                    alert("请选择刊物");
+                    return;
+                }
+
+                var key = request.term;
+                if (key.length == 0)
+                    return;
+
+                var topics = [];
+                $.ajax({
+                    url: "/php/action/journal_mgr.php",
+                    data: {
+                        name: key,
+                        journal_id: pub_journal_id,
+                        action: "match-topics"
+                    },
+                    type:'POST',
+                    dataType: 'json',
+                    success: function(data){
+                        for(var i = 0; i < data.length; i++){
+                            var topic = new Object();
+                            topic.value = data[i].TOPIC_NAME;
+                            topic.label = data[i].TOPIC_NAME;
+                            topic.id = data[i].TOPIC_ID;
+                            topics.push(topic);
+                        }
+                        callback(topics);
+
+                    },
+                    error: function(xhr, statusCode, statusMsg){
+                        stove_alert("匹配话题错误:" + statusCode + "-" + statusMsg);
+                    }
+                });
+            };
+
+            topicCompleteOption.select = function(event, ui){
+                pub_topic_id = ui.item.id;
+            }
+
+            topicCompleteOption.delay=1000;
+            $('#text_topic').autocomplete(topicCompleteOption);
+        }
+
+        function stove_show_publish_form(){
+            $('#publish_div').show();
+        }
+
+        function stove_close_publish_form(){
+            $('#publish_div').hide();
+        }
+    </script>
+</head>
+<body>
+<div class="publish-action">
+    <a href="javascript:stove_show_publish_form()">发表</a>
+
+    <div id="publish_div" class="publish-form">
+        <p class="close-form">
+            <a href="javascript:stove_close_publish_form();" style="color: #fff; text-decoration: none; border: none; line-height: normal; margin-left: 0px; padding-right: 5%">X</a>
+        </p>
+
+        <input type="text" id="text_journal" placeholder="刊物">
+        <input type="text" id="text_topic" placeholder="话题">
+        <div style="text-align: right; margin-right: 5%">
+            <button id="btn_pub_ok" class="btn btn-primary">确定</button>
+        </div>
+
+    </div>
+</div>
+
+<div class="paper-body">
+    <div id="div_paper_title" class="write-paper-title">
+        <textarea id="paper_title" wrap="virtual" placeholder="标题">{#$paper_title#}</textarea>
+    </div>
+    <div id="div_paper_summary" class="write-paper-summary">
+        <textarea id="paper_summary" wrap="virtual" placeholder="摘要">{#$paper_summary#}</textarea>
+    </div>
+    <div id="div_paper_content" class="write-paper-content"></div>
+
+</div>
+<div style="height: 0px; visibility: hidden">
+    <textarea id="inner_content" style="visibility: hidden">{#$content#}</textarea>
+    <input type="text" id="content_length" style="visibility: hidden" value="{#$content_length#}"/>
+    <input type="text" id="paper_id" style="visibility: hidden" value="{#$paper_id#}"/>
+</div>
+</body>
+
+</html>

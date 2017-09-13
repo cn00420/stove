@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta http-equiv="CONTENT-TYPE" content="text/html" charset="UTF-8">
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <title>欢迎登录Stove</title>
+    <link rel='stylesheet' id='buttons-css' href='/resource/css/buttons.min.css' type='text/css' media='all' />
+    <link rel='stylesheet' id='dashicons-css' href='/resource/css/dashicons.min.css' type='text/css' media='all' />
+    <link rel='stylesheet' id='login-css' href='/resource/css/login.min.css' type='text/css' media='all' />
+    <script type="text/javascript" src="/js/jquery2_1_4.js"></script>
+    <script type="text/javascript" src="/js/DataFormatValidation.js" charset="utf-8"></script>
+    <script type="text/javascript" src="/js/StoveUtil.js" charset="utf-8"></script>
+    <script type="text/javascript" src="/js/login.js" charset="UTF-8"></script>
+</head>
+<body class="login login-action-login wp-core-ui">
+ <div id="login">
+     <h1><img src="../resource/image/stove-icon.png" title="欢迎使用Stove"></h1>
+     <div id="login_exist">
+         <form name="loginform" id="loginform" action="#">
+             <p>
+                 <label for="user_code">用户 <br>
+                     <input type="text" name="user_code" id="user_code"  class="input" value="" size="20" />
+                 </label>
+             </p>
+             <p>
+                 <label for="user_pwd">密码 <br>
+                     <input type="password" name="user_pwd" id="user_pwd"  class="input" value="" size="20" />
+                 </label>
+             </p>
+             <p class="register-fields">
+                 <label for="user_pwd2">请再次输入密码 <br>
+                     <input type="password" name="user_pwd2" id="user_pwd2"  class="input" value="" size="20" />
+                 </label>
+             </p>
+             <p class="register-fields">
+                 <label for="user_nick">笔名 <br>
+                     <input type="text" name="user_nick" id="user_nick"  class="input" value="" size="20" />
+                 </label>
+             </p>
+             <p class="forgetmenot">
+                 <label for="rememberme">
+                     <input name="rememberme" type="checkbox" id="rememberme" value="forever"  />请记住我</label>
+             </p>
+             <p class="submit login-fields">
+                 <input type="button" name="stove_login" id="stove_login" class="button button-primary button-large" value="登录"/>
+             </p>
+             <p class="submit register-fields">
+                 <input type="button" name="stove_register" id="stove_register" class="button button-primary button-large" value="注册"/>
+             </p>
+         </form>
+         <p id="nav">
+             <a href="#" title="注册新用户" id="switch_to_register" class="login-fields">还没有注册?</a>
+             <a href="#" title="返回登录界面" id="switch_to_login" class="register-fields">已经注册账号?</a>
+             <br>
+             <a href="#" title="发送密码提醒">忘记密码?</a>
+         </p>
+     </div>
+ </div>
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="CONTENT-TYPE" content="text/html" charset="UTF-8">
+    <title>刊物管理</title>
+
+    <link href="/resource/css/bootstrap.css" rel="stylesheet">
+    <link href="/resource/css/jquery-ui.css" rel="stylesheet">
+    <link href="/resource/css/jquery.tagsinput.css" rel="stylesheet">
+    <link href="/resource/css/stove.site.css" rel="stylesheet">
+
+    <script type="text/javascript" src="/js/jquery2_1_4.js"></script>
+    <script type="text/javascript" src="/js/jquery-ui.js"></script>
+    <script type="text/javascript" src="/js/jquery.iframe-transport.js"></script>
+    <script type="text/javascript" src="/js/jquery.fileupload.js"></script>
+    <script type="text/javascript" src="/js/jquery.tagsinput.js"></script>
+    <script type="text/javascript" src="/js/StoveUtil.js"></script>
+    <script type="text/javascript" src="/js/stove_comm.js"></script>
+
+    <script type="text/javascript">
+        var journal_id = -1;
+
+        $(function () {
+            // 绑定事件
+            stove_register_fileupload();
+            $('#save_journal').on('click', 'stove_save_journal');
+            $('#journal_tags').tagsInput({
+                autocomplete_url: stove_get_journal_tags_def
+            });
+
+            // 初始化刊物
+            stove_init_journal();
+        });
+
+        function stove_register_fileupload() {
+            $("#upload_files").fileupload({
+                dataType: "json",
+                url: "/ueditor/php/controller.php?action=uploadimage",
+                done: function (e, data) {
+                    $('#journal_cover').attr('src', data.result.url);
+                    $('#progress_bar').css('width', "0%");
+                },
+                progressall: function (e, data) {
+                    var progress = parseInt(data.loaded / data.total * 100, 10);
+                    $('#progress_bar').css('width', progress + '%');
+                },
+                fail: function (e, data) {
+                    stove_alert("文件上传错误，请稍后再试" + data.textStatus);
+                }
+            });
+        }
+
+        function stove_save_journal(){
+            if (journal_id == -1)
+                stove_create_journal();
+            else
+                stove_update_journal();
+        }
+
+        function stove_create_journal(){
+            var name = $('#journal_name')[0].value;
+            if (stove_is_empty_str(name)){
+                stove_alert('请输入刊物标题');
+                $('#journal_name')[0].focus();
+                return;
+            }
+
+            var tags = $('#journal_tags')[0].value;
+
+            var desc = $('#journal_desc')[0].value;
+            if (stove_is_empty_str(desc)){
+                stove_alert('请输入刊物的描述信息');
+                $('#journal_desc')[0].focus();
+                return;
+            }
+
+            var url = $('#journal_cover').attr('src');
+            if (stove_is_empty_str(url)){
+                stove_alert('请选择刊物的封面图片');
+                return;
+            }
+
+            $.ajax({
+                url: "/php/action/journal_mgr.php",
+                data: {
+                    journal_name: name,
+                    journal_tags: tags,
+                    journal_desc: desc,
+                    image_url:url,
+                    action: "create-journal"
+                },
+                type:'POST',
+                dataType: 'json',
+                success: function(data){
+                    if (data.status == 0)
+                      stove_alert('创建刊物成功');
+                    else
+                      stove_alert('创建刊物失败:' + data.description);
+                },
+                error: function(xhr, statusCode, statusMsg){
+                    stove_alert("创建刊物错误:" + statusCode + "-" + statusMsg);
+                }
+            });
+        }
+
+        function stove_update_journal(){
+            var name = $('#journal_name')[0].value;
+            if (stove_is_empty_str(name)){
+                stove_alert('请输入刊物标题');
+                $('#journal_name')[0].focus();
+                return;
+            }
+
+            var tags = $('#journal_tags')[0].value;
+
+            var desc = $('#journal_desc')[0].value;
+            if (stove_is_empty_str(desc)){
+                stove_alert('请输入刊物的描述信息');
+                $('#journal_desc')[0].focus();
+                return;
+            }
+
+            var url = $('#journal_cover').attr('src');
+            if (stove_is_empty_str(url)){
+                stove_alert('请选择刊物的封面图片');
+                return;
+            }
+
+            $.ajax({
+                url: "/php/action/journal_mgr.php",
+                data: {
+                    journal_id: journal_id,
+                    journal_name: name,
+                    journal_tags: tags,
+                    journal_desc: desc,
+                    image_url:url,
+                    action: "update-journal"
+                },
+                type:'POST',
+                dataType: 'json',
+                success: function(data){
+                    if (data.status == 0){
+                        var from = stove_get_value_from_url(window.location.href, "from");
+                        if (stove_is_empty_str(from))
+                            stove_alert('修改刊物成功');
+                        else {
+                            window.location = from.replace(':', '?');
+                        }
+                    }
+
+                    else
+                        stove_alert('修改刊物失败:' + data.description);
+                },
+                error: function(xhr, statusCode, statusMsg){
+                    stove_alert("修改刊物错误:" + statusCode + "-" + statusMsg);
+                }
+            });
+        }
+
+        function stove_get_journal_tags_def(request, callback){
+            var key = request.term;
+            if (key.length == 0)
+                return;
+
+            $.ajax({
+                url: "/php/action/journal_mgr.php",
+                data: {
+                    key: key,
+                    action: "get-journal-tags-def"
+                },
+                type:'POST',
+                dataType: 'json',
+                success: function(data){
+                    callback(data);
+                },
+                error: function(xhr, statusCode, statusMsg){
+                    stove_alert("匹配刊物标签错误:" + statusCode + "-" + statusMsg);
+                }
+            });
+        }
+
+        function stove_init_journal(){
+            var url = window.location.href;
+            journal_id = stove_get_value_from_url(url, 'journal_id');
+
+            // 如果刊物ID不为空，获取刊物信息
+            if (!stove_is_empty_str(journal_id)){
+                $.ajax({
+                    url: "/php/action/journal_mgr.php",
+                    data: {
+                        journal_id: journal_id,
+                        action: "get-journal-for-edit"
+                    },
+                    type:'POST',
+                    dataType: 'json',
+                    success: function(data){
+                        $('#journal_name').val(data.JOURNAL_NAME);
+                        $('#journal_desc').val(data.JOURNAL_DESC);
+                        $('#journal_tags').importTags(data.TAGS);
+                        $('#journal_cover').attr('src', data.IMAGE_URL);
+                    },
+                    error: function(xhr, statusCode, statusMsg){
+                        stove_alert("匹配刊物标签错误:" + statusCode + "-" + statusMsg);
+                    }
+                });
+            }
+        }
+    </script>
+</head>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-lg-5">
+            <div style="position: fixed">
+                <div style="width: 480px; height: 750px;">
+                    <img id="journal_cover" class="journal-cover-lg" style="margin-top: 20px; margin-left: 80px">
+
+                    <form class="file-upload-lg">
+                        <input type="file" name="upfile" id="upload_files"/>
+                    </form>
+
+                    <div style="position: absolute; top: 472px; margin-left: 80px; width: 320px">
+                        <div id="progress_bar" class="stove-progress-bar" >
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div class="col-lg-7">
+            <div class="row">
+                <input type="text" id="journal_name" placeholder="刊物名称" style="width: 100%; font-size: 20px; line-height: 1.6em; margin-top: 20px; margin-bottom: 10px"/>
+            </div>
+
+            <div class="row">
+                <div class="tagsinput" style="height: 90px">
+                    <input id="journal_tags" placeholder="刊物标签" type="text" style="width: 100%; font-size: 14px; margin-top: 10px; margin-bottom: 10px"/>
+                </div>
+            </div>
+
+            <div class="row" style="height: 260px">
+                <textarea id="journal_desc" placeholder="刊物描述" style="width: 100%; font-size: 16px; margin-top: 10px; margin-bottom: 10px; height: 100%"></textarea>
+            </div>
+
+            <div class="row" style="text-align: right; position: absolute; top:450px; width: 100%">
+                <a id="save_journal" href="javascript:stove_save_journal();" class="button-anchor">保存</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
